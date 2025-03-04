@@ -40,3 +40,8 @@
 #  username: username
 #  password: password
 #  queue: queue
+
+cors:
+  enabled: true
+  allowed_origins:
+    - "*"

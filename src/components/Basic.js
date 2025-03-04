@@ -26,6 +26,7 @@ function Basic() {
     const request_temp = { sender: "user", sender_id: name, msg: inputMessage };
 
     if (inputMessage !== "") {
+      console.log("Получено сообщение: ", inputMessage)
       // Добавляем сообщение пользователя в историю чата
       setChat((chat) => [...chat, request_temp]);
       setbotTyping(true); // Устанавливаем состояние "бот печатает"
@@ -38,39 +39,47 @@ function Basic() {
 
   // Функция для отправки сообщения на сервер Rasa и получения ответа
   const rasaAPI = async function handleClick(name, msg) {
-    await fetch("http://localhost:5005/webhooks/rest/webhook", {
+  try {
+    const response = await fetch("http://localhost:5005/webhooks/rest/webhook", {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
         charset: "UTF-8",
       },
-      credentials: "same-origin",
       body: JSON.stringify({ sender: name, message: msg }),
-    })
-      .then((response) => response.json()) // Преобразуем ответ в JSON
-      .then((response) => {
-        if (response) {
-          // Получаем текстовое сообщение от бота
-          const temp = response[0];
-          const recipient_id = temp["recipient_id"];
-          const recipient_msg = temp["text"];
+    });
 
-          // Создаем объект ответа бота
-          const response_temp = {
-            sender: "bot",
-            recipient_id: recipient_id,
-            msg: recipient_msg,
-          };
-          setbotTyping(false); // Останавливаем индикацию "бот печатает"
+    const data = await response.json(); // Преобразуем тело ответа в JSON
+    console.log("Ответ от rasa in json: ", data)
+    if (data && data.length > 0) {
+      const temp = data[0];
+      if (temp && temp.text) {
+        // Декодируем текст из Unicode
+        const recipient_msg = decodeURIComponent(temp.text);
+        console.log("recipient_msg: ", recipient_msg)
 
-          // Добавляем сообщение бота в историю чата
-          setChat((chat) => [...chat, response_temp]);
-        }
-      });
-  };
+        const response_temp = {
+          sender: "bot",
+          recipient_id: temp.recipient_id,
+          msg: recipient_msg,
+        };
 
-  console.log(chat); // Для отладки, выводим текущее состояние чата в консоль
+        setbotTyping(false);
+        setChat((chat) => [...chat, response_temp]);
+      } else {
+        console.error("Ошибка: сообщение бота не найдено.");
+      }
+    } else {
+      console.error("Ошибка: пустой ответ от Rasa.");
+    }
+  } catch (error) {
+    console.error("Ошибка при запросе к Rasa API:", error);
+  }
+};
+
+
+  // console.log(chat); // Для отладки, выводим текущее состояние чата в консоль
 
   // Стили для карточки чата, заголовка, тела и нижней части
   const stylecard = {
